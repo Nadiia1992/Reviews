@@ -1,16 +1,15 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Reviews.Models;
+using Reviews.Repository;
+using Reviews.Services;
 using System.Security.Cryptography;
-using System.Text;
-using static System.Net.WebRequestMethods;
+
+
 
 namespace Reviews.Controllers
 {
-    public class AccountController(MessageContext context, IWebHostEnvironment appEnvironment) : Controller
+    public class AccountController(IRepositoryMessage repo, IRepositoryUser re, PasswordHasher passwordHasher, IWebHostEnvironment appEnvironment) : Controller
     {
-        private readonly MessageContext _context = context;
-
         public IActionResult Login() => View();
 
         [HttpPost]
@@ -19,8 +18,8 @@ namespace Reviews.Controllers
         {
             if (!ModelState.IsValid) return View(logon);
 
-            
-            var user = await _context.User.FirstOrDefaultAsync(a => a.Login == logon.Login);
+
+            var user = await re.GetUserByLoginAsync(logon.Login);
 
             if (user == null)
             {
@@ -28,13 +27,8 @@ namespace Reviews.Controllers
                 return View(logon);
             }
 
-            
-            byte[] passwordBytes = Encoding.Unicode.GetBytes(user.Salt + logon.Password);
+            if(!passwordHasher.VerifyPassword(logon.Password, user.Salt, user.Password))
 
-            
-            string hash = Convert.ToHexString(SHA256.HashData(passwordBytes));
-
-            if (user.Password != hash)
             {
                 ModelState.AddModelError(string.Empty, "Невірний логін або пароль!");
                 return View(logon);
@@ -55,18 +49,18 @@ namespace Reviews.Controllers
         {
             if (!ModelState.IsValid) return View(reg);
 
-            if (await _context.User.AnyAsync(u => u.Login == reg.Login))
+            if (await re.UserExistsAsync(reg.Login))
             {
                 ModelState.AddModelError(string.Empty, "Користувач з таким логіном вже існує!");
                 return View(reg);
             }
 
-         
+
             byte[] saltBytes = RandomNumberGenerator.GetBytes(16);
             string salt = Convert.ToHexString(saltBytes);
 
-            byte[] passwordBytes = Encoding.Unicode.GetBytes(salt + reg.Password);
-            string hash = Convert.ToHexString(SHA256.HashData(passwordBytes));
+            string hash = passwordHasher.HashPassword(reg.Password,salt);
+
 
             var user = new Users
             {
@@ -77,8 +71,8 @@ namespace Reviews.Controllers
                 Password = hash
             };
 
-            _context.User.Add(user);
-            await _context.SaveChangesAsync();
+            await re.CreateAsync(user);
+            await re.SaveAsync();
 
             return RedirectToAction(nameof(Login));
         }
@@ -89,16 +83,15 @@ namespace Reviews.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Comment,Foto,UserId")] Message message, IFormFile? posterFile)
         {
-            
+
             var login = HttpContext.Session.GetString("Login");
 
             if (string.IsNullOrEmpty(login))
             {
                 return RedirectToAction("Login");
             }
-     
-            var user = await _context.User
-                .FirstOrDefaultAsync(u => u.Login == login);
+
+            var user = await re.GetUserByLoginAsync(login);
 
             if (user == null)
             {
@@ -123,8 +116,8 @@ namespace Reviews.Controllers
                 }
                 message.Foto = relativePath;
             }
-            _context.Add(message);
-            await _context.SaveChangesAsync();
+            await repo.CreateAsync(message);
+            await repo.SaveAsync();
             return RedirectToAction(nameof(Clients));
         }
 
@@ -133,10 +126,10 @@ namespace Reviews.Controllers
             return View();
         }
 
-        public async Task<IActionResult> Clients()
+        public async Task<IActionResult> Clients(int page = 1)
         {
-            var messages = _context.Messages.Include(p => p.User);
-            return View(await messages.ToListAsync());
+            var messages = await repo.GetMessageListAsync();
+            return View(messages);
         }
 
 
@@ -146,9 +139,6 @@ namespace Reviews.Controllers
 
             return RedirectToAction("Index", "Home");
         }
-
     }
-
-
 }
 

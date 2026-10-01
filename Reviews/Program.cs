@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Reviews.Models;
+using Reviews.Repository;
+using Reviews.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +19,11 @@ builder.Services.AddDbContext<MessageContext>(options => options.UseSqlServer(co
 
 
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddScoped<IRepositoryUser, UserRepository>();
+builder.Services.AddScoped<IRepositoryMessage, MessageRepository>();
+builder.Services.AddScoped<PasswordHasher>();
+
 
 var app = builder.Build();
 app.UseStaticFiles();

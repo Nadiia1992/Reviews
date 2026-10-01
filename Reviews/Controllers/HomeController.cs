@@ -1,22 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Reviews.Models;
+using Reviews.Repository;
 
 namespace Reviews.Controllers
 {
-    public class HomeController : Controller
+    public class HomeController(IRepositoryMessage repo) : Controller
     {
-        private readonly MessageContext _context;
-
-        public HomeController(MessageContext context)
-        {
-            _context = context;
-        }
 
         public async Task<IActionResult> Index()
         {
-            var messages = _context.Messages.Include(p => p.User);
-            return View(await messages.ToListAsync());
+            var messages = await repo.GetMessageListAsync();
+            return View(messages);
         }
 
         [HttpPost]

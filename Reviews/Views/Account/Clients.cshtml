@@ -58,7 +58,7 @@
 
     @foreach (var item in Model)
     {
-        <div class="col">
+        <div class="review">
             <div class="card shadow-sm border-0">
                 <div class="card-body d-flex flex-column">
 
@@ -66,6 +66,8 @@
                         <h4>@Html.DisplayFor(modelItem => item.User!.Login)</h4>
                         <span>@Html.DisplayFor(modelItem => item.MessageDate)</span>
                     </div>
+
+
 
                     <hr />
                     <p class="align-middle">@Html.DisplayFor(modelItem => item.Comment)</p>
@@ -80,7 +82,10 @@
         </div>
     }
 </div>
-
+            <div id="pagination">
+                <button id="prevButton">Попередня</button>
+                <button id="nextButton">Наступна</button>
+            </div>
         </main>
     </div>
     <footer>
@@ -90,6 +95,8 @@
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js"></script>
+
 </body>
 </html>
 
